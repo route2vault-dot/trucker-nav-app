@@ -1,0 +1,9 @@
+# API keys — never commit
+app/js/config.js
+
+# OS noise
+Thumbs.db
+Desktop.ini
+
+# Claude Code local settings (not part of the app)
+.claude/

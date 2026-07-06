@@ -1,0 +1,115 @@
+/* STN — driver-first styling: big targets, high contrast, glanceable */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 18px;
+  background: #0b1d2a;
+}
+
+#map { position: absolute; inset: 0; z-index: 0; }
+
+.hidden { display: none !important; }
+
+/* ---------- top search bar ---------- */
+#topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+  display: flex; gap: 8px; padding: 10px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: rgba(11, 29, 42, 0.92);
+}
+#dest {
+  flex: 1; height: 56px; padding: 0 16px;
+  font-size: 20px; border: none; border-radius: 12px;
+  background: #fff; color: #111;
+}
+button.primary {
+  height: 56px; padding: 0 22px;
+  font-size: 20px; font-weight: 800; letter-spacing: 1px;
+  color: #fff; background: #1db954; border: none; border-radius: 12px;
+  cursor: pointer;
+}
+button.primary:active { background: #169c46; }
+button.primary.big { width: 100%; margin-top: 14px; }
+
+/* ---------- panels (search results, settings) ---------- */
+.panel {
+  position: absolute; top: 80px; left: 10px; right: 10px; z-index: 1100;
+  max-height: 70vh; overflow-y: auto;
+  background: #10293c; color: #fff;
+  border-radius: 14px; padding: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+.panel h2 { font-size: 17px; color: #7fd1ff; margin: 10px 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+.panel .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.panel .row label { width: 78px; font-weight: 600; }
+.panel input {
+  height: 52px; width: 88px; padding: 0 10px;
+  font-size: 20px; border: none; border-radius: 10px;
+  background: #fff; color: #111;
+}
+.fineprint { font-size: 14px; color: #9db4c4; margin-top: 10px; line-height: 1.4; }
+
+/* search result buttons */
+.resultBtn {
+  display: block; width: 100%; text-align: left;
+  padding: 16px 14px; margin: 6px 0;
+  font-size: 18px; line-height: 1.3;
+  color: #fff; background: #1a3a54; border: none; border-radius: 10px;
+  cursor: pointer;
+}
+.resultBtn:active { background: #24506f; }
+
+/* ---------- route summary ---------- */
+#routeInfo {
+  position: absolute; top: 82px; left: 10px; right: 10px; z-index: 900;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: #0e3a22; color: #fff;
+  font-size: 19px; font-weight: 700;
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+#routeInfo button {
+  width: 44px; height: 44px; font-size: 20px;
+  color: #fff; background: rgba(255,255,255,.15);
+  border: none; border-radius: 10px; cursor: pointer;
+}
+
+/* ---------- hazard banner ---------- */
+#hazardBanner {
+  position: absolute; top: 150px; left: 10px; right: 10px; z-index: 900;
+  padding: 14px 16px;
+  background: #b91c1c; color: #fff;
+  font-size: 19px; font-weight: 800; line-height: 1.35;
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.5);
+}
+
+/* ---------- status / error toast ---------- */
+#statusMsg {
+  position: absolute; bottom: 110px; left: 10px; right: 10px; z-index: 1200;
+  padding: 14px 16px; text-align: center;
+  background: #333; color: #fff; font-size: 17px;
+  border-radius: 12px;
+}
+
+/* ---------- floating buttons ---------- */
+#fabs {
+  position: absolute; right: 12px; bottom: 24px; z-index: 800;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.fab {
+  width: 62px; height: 62px; font-size: 26px;
+  background: #10293c; border: 2px solid #2c4a63; border-radius: 50%;
+  cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.45);
+}
+.fab:active { background: #1a3a54; }
+
+/* ---------- night mode ---------- */
+body.night .leaflet-tile-pane { filter: brightness(0.6) contrast(1.1); }
+body.night #dest { background: #ddd; }
+
+/* bridge popup text */
+.bridgePopup { font-size: 17px; font-weight: 700; line-height: 1.4; }
+.bridgePopup .h { font-size: 22px; }
+.leaflet-popup-content { margin: 12px 16px; }

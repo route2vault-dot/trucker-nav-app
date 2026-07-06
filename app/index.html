@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>STN — Supreme Trucking Navigation</title>
+  <meta name="description" content="Truck-safe routing and low-bridge warnings for TX, OK, LA, AR, NM." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0b1d2a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top bar: destination search -->
+  <header id="topbar">
+    <input id="dest" type="text" placeholder="Where to?" autocomplete="off" enterkeyhint="search" />
+    <button id="goBtn" class="primary">GO</button>
+  </header>
+
+  <!-- Search results list -->
+  <div id="results" class="panel hidden"></div>
+
+  <!-- Route summary -->
+  <div id="routeInfo" class="hidden">
+    <span id="routeSummary"></span>
+    <button id="clearRouteBtn" title="Clear route">✕</button>
+  </div>
+
+  <!-- Low-bridge warning banner -->
+  <div id="hazardBanner" class="hidden"></div>
+
+  <!-- Status / error messages -->
+  <div id="statusMsg" class="hidden"></div>
+
+  <div id="map"></div>
+
+  <!-- Floating action buttons -->
+  <div id="fabs">
+    <button id="locateBtn" class="fab" title="My location">📍</button>
+    <button id="nightBtn" class="fab" title="Night mode">🌙</button>
+    <button id="settingsBtn" class="fab" title="Truck settings">⚙️</button>
+  </div>
+
+  <!-- Settings panel -->
+  <div id="settings" class="panel hidden">
+    <h2>My Truck</h2>
+    <div class="row">
+      <label>Height</label>
+      <input id="setHeightFt" type="number" min="8" max="16" inputmode="numeric" /> <span>ft</span>
+      <input id="setHeightIn" type="number" min="0" max="11" inputmode="numeric" /> <span>in</span>
+    </div>
+    <div class="row">
+      <label>Weight</label>
+      <input id="setWeight" type="number" min="10000" max="200000" step="500" inputmode="numeric" /> <span>lbs</span>
+    </div>
+    <div class="row">
+      <label>Length</label>
+      <input id="setLength" type="number" min="20" max="120" inputmode="numeric" /> <span>ft</span>
+    </div>
+    <div class="row">
+      <label>Width</label>
+      <input id="setWidth" type="number" min="6" max="12" step="0.5" inputmode="numeric" /> <span>ft</span>
+    </div>
+    <h2>Routing key</h2>
+    <div class="row">
+      <input id="setOrsKey" type="text" placeholder="Paste OpenRouteService key" style="flex:1" />
+    </div>
+    <p class="fineprint">Free key from openrouteservice.org — needed once, stays on this phone.</p>
+    <button id="saveSettingsBtn" class="primary big">SAVE</button>
+    <p class="fineprint">⚠️ Bridge and restriction data can be incomplete or out of date.
+      Always obey posted signs. You are responsible for your route.</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Optional local config (git-ignored). The app works without it. -->
+  <script src="js/config.js" onerror="void 0"></script>
+  <script src="js/app.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/hazards.js"></script>
+  <script src="js/routing.js"></script>
+  <script>STN.start();</script>
+</body>
+</html>
