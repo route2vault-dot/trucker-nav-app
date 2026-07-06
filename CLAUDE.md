@@ -16,7 +16,7 @@ Project: **Supreme Trucking Navigation (STN)** — trucker navigation app for th
 4. **One feature at a time.** Finish, verify on a phone-sized screen, then move on.
 5. **Verify external endpoints before coding against them.** The 511 endpoints in `docs/SOURCE-MAP.md` were written from general knowledge and must be confirmed live (fetch them) before Phase 1 work starts.
 6. **Safety honesty in the UI.** OSM bridge-height data is incomplete. The app must present missing data as "unknown — use caution," never as "clear."
-7. **API keys** go in a git-ignored config file, never hardcoded in committed files. Explain to the user how to get each key when the time comes.
+7. **API keys:** deliberate exception — the free-tier OpenRouteService key lives in the committed `app/js/config.js` so drivers never enter one (user's decision, 2026-07-06; client-side keys are visible to visitors anyway, and it's revocable). Any *paid* or server-side key must never be committed — ask the user before adding one.
 
 ## Repo layout
 

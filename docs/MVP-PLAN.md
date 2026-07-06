@@ -17,10 +17,12 @@ What it does:
 - [x] Low-clearance bridges as warning pins — 5,334 points downloaded from OSM for all 5 states (1,142 under 13'6"); red = won't fit, orange = tight; route is auto-checked and a red banner lists bridges within ~100 m of it
 - [x] Blue dot: driver's live GPS position
 - [x] Big-button, high-contrast UI with day/night toggle
-- [ ] "Add to Home Screen" instructions *(after hosting)*
-- [ ] Hosted free (GitHub Pages) at a link Dad can bookmark *(needs user's GitHub account — next step)*
+- [x] "Add to Home Screen" instructions *(standard browser feature — see README)*
+- [x] Hosted free on GitHub Pages: **https://route2vault-dot.github.io/trucker-nav-app/** *(live 2026-07-06, auto-deploys on every push to `main` via `.github/workflows/deploy.yml`)*
 
-Verified 2026-07-06: OSM tiles ✓, Nominatim ✓, Overpass ✓, ORS endpoint alive ✓ (key pending), all five 511 sites live ✓. Local test server: `powershell -File scripts\serve.ps1` → http://localhost:8080
+Verified 2026-07-06: OSM tiles ✓, Nominatim ✓, Overpass ✓, ORS truck routing ✓ (live test: 1,098 mi route, 13 low bridges flagged, lowest 12'10"), all five 511 sites live ✓. Local test server: `powershell -File scripts\serve.ps1` → http://localhost:8080
+
+**Phase 0 is DONE.** Repo: https://github.com/route2vault-dot/trucker-nav-app — next real-world step is Dad using it and reporting back before starting Phase 1.
 
 What it deliberately does NOT do yet: voice directions, live traffic, driver reports, parking, fuel, weather. Resist the urge.
 

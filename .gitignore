@@ -1,5 +1,7 @@
-# API keys — never commit
-app/js/config.js
+# NOTE: app/js/config.js IS committed on purpose — it holds a free-tier
+# OpenRouteService key so drivers never have to enter one. Client-side keys
+# are visible to site visitors regardless; revoke & replace via the ORS
+# dashboard if it's ever abused.
 
 # OS noise
 Thumbs.db
