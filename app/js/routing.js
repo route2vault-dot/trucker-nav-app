@@ -120,6 +120,10 @@ STN.routing = {
       if (e.message === "KEY") {
         STN.openSettings();
         STN.status("That routing key was rejected — double-check it and save again.", 8000);
+      } else if (e.message === "NETWORK") {
+        STN.status("Couldn't reach the routing service — check your signal or Wi-Fi and try again.", 8000);
+      } else if (e.message.indexOf("HTTP_") === 0) {
+        STN.status("Routing service error (" + e.message.slice(5) + ") — try again shortly.", 8000);
       } else {
         STN.status("Couldn't build a route: " + e.message, 8000);
       }
@@ -161,14 +165,28 @@ STN.routing = {
     if (opts.avoidFeatures) body.options.avoid_features = opts.avoidFeatures;
     if (opts.preference) body.preference = opts.preference;
 
-    var r = await fetch("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", {
-      method: "POST",
-      headers: { "Authorization": s.orsKey, "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    var r;
+    try {
+      r = await fetch("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", {
+        method: "POST",
+        headers: { "Authorization": s.orsKey, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      // the request never got a response at all (offline, dropped signal,
+      // blocked by a network filter, etc.) — distinct from ORS replying
+      // with an error, which is handled below with its own message.
+      throw new Error("NETWORK");
+    }
     if (r.status === 401 || r.status === 403) throw new Error("KEY");
-    var geo = await r.json();
+    var geo;
+    try {
+      geo = await r.json();
+    } catch (e) {
+      throw new Error("HTTP_" + r.status);
+    }
     if (geo.error) throw new Error(geo.error.message || "routing error");
+    if (!r.ok) throw new Error("HTTP_" + r.status);
     return geo;
   },
 
