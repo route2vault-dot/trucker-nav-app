@@ -3,25 +3,42 @@
    IMPORTANT ORS limits (confirmed by live testing, not documented clearly):
      - avoid_polygons requests are capped at ~150,000 m of route length.
      - alternative_routes requests are capped at ~100,000 m of route length.
-   Almost every real long-haul route is longer than that, so neither feature
-   can be used on the whole trip at once for a long haul. This file therefore
-   splits into two strategies:
+   Neither limit applies to plain weighting params (preference, avoid_features),
+   so route VARIETY comes from requesting several genuinely different weightings
+   rather than ORS's native alternative_routes:
 
-     SHORT routes (<= SHORT_MAX_M): native alternative_routes gives 2-3 real
-     route choices; each is then individually cleaned up with a normal
-     avoid_polygons reroute loop (both fit comfortably under both caps).
+     Recommended — ORS's balanced default
+     Fastest     — preference: fastest
+     Shortest    — preference: shortest (fewer miles, often slower)
+     Avoid Tolls — avoid_features: tollways
 
-     LONG routes: neither special feature can span the whole trip. Instead,
-     each low bridge actually on the route gets a LOCAL detour — a small
-     window (a few miles) around it is re-requested with avoid_polygons
-     (well under the 150 km cap) and spliced into the original route.
-     "Alternates" for long routes are Fastest vs. Shortest (ORS's plain
-     `preference` weighting, which isn't subject to either cap), each
-     independently patched the same way. */
+   ("Avoid Highways" was deliberately left out: ORS only avoids roads that are
+   explicitly tagged with truck restrictions, and most minor/residential roads
+   aren't tagged at all — forcing a truck off the highway network risks a route
+   ORS has no real basis for calling truck-appropriate.)
+
+   Every weighting above gets put through the EXACT SAME low-bridge check
+   before it's shown to the driver:
+
+     SHORT routes (<= SHORT_MAX_M): a normal avoid_polygons reroute loop
+     (comfortably under both ORS length caps).
+
+     LONG routes: neither special feature can span the whole trip, so each
+     low bridge actually on the route gets a LOCAL detour — a small window
+     (a few miles) around it is re-requested with avoid_polygons (well under
+     the 150 km cap) and spliced into the original route. */
 
 STN.routing = {
   routeLayer: null,
   destMarker: null,
+
+  WEIGHTINGS: [
+    { key: "recommended", label: "Recommended", extra: { preference: "recommended" } },
+    { key: "fastest",     label: "Fastest",     extra: { preference: "fastest" } },
+    { key: "shortest",    label: "Shortest",    extra: { preference: "shortest" } },
+    { key: "avoidTolls",  label: "Avoid Tolls", extra: { preference: "fastest", avoidFeatures: ["tollways"] } }
+  ],
+  DEDUPE_M: 50,          // options within this distance of each other = same route
 
   ON_ROUTE_M: 30,        // bridge within this = truck would drive under it
   NEARBY_M: 100,         // bridge within this = worth a caution note
@@ -69,7 +86,7 @@ STN.routing = {
     this.route(dest);
   },
 
-  /* ---------- 2. entry point: figure out short vs. long strategy ---------- */
+  /* ---------- 2. entry point: fetch every weighting, vet each one equally ---------- */
   route: async function (dest) {
     if (!STN.settings.orsKey) {
       STN.openSettings();
@@ -80,15 +97,25 @@ STN.routing = {
     var startLL = [start[1], start[0]];
     var destLL = [dest[1], dest[0]];
 
-    STN.status("Finding a truck-safe route…", 45000);
+    STN.status("Finding truck-safe route options…", 45000);
     try {
-      var baseline = await this._fetchRoute([startLL, destLL]);
-      var distM = baseline.features[0].properties.summary.distance;
-      var options = distM <= this.SHORT_MAX_M
-        ? await this._buildShortOptions(startLL, destLL)
-        : await this._buildLongOptions(startLL, destLL, baseline);
+      var recommended = await this._fetchRoute([startLL, destLL], this.WEIGHTINGS[0].extra);
+      var isLong = recommended.features[0].properties.summary.distance > this.SHORT_MAX_M;
+
+      var options = [];
+      for (var i = 0; i < this.WEIGHTINGS.length; i++) {
+        var w = this.WEIGHTINGS[i];
+        try {
+          var baseline = (i === 0) ? recommended : await this._fetchRoute([startLL, destLL], w.extra);
+          var opt = isLong
+            ? await this._patchLowBridges(baseline.features[0], w.extra)
+            : await this._shortRouteLoop(baseline.features[0], startLL, destLL, w.extra);
+          opt.label = w.label;
+          options.push(opt);
+        } catch (e) { /* skip this weighting, the others still stand a chance */ }
+      }
       STN.hide("statusMsg");
-      this._showOptions(options);
+      this._showOptions(this._dedupe(options));
     } catch (e) {
       if (e.message === "KEY") {
         STN.openSettings();
@@ -97,6 +124,19 @@ STN.routing = {
         STN.status("Couldn't build a route: " + e.message, 8000);
       }
     }
+  },
+
+  /* Weightings that land on the same physical route (common for Recommended
+     vs. Fastest, or Avoid Tolls where there's no toll road nearby anyway)
+     shouldn't clutter the picker with duplicate buttons. Keeps the first
+     (highest-priority) of each near-identical group. */
+  _dedupe: function (options) {
+    var kept = [];
+    options.forEach(function (opt) {
+      var isDup = kept.some(function (k) { return Math.abs(k.distanceM - opt.distanceM) < STN.routing.DEDUPE_M; });
+      if (!isDup) kept.push(opt);
+    });
+    return kept;
   },
 
   /* ---------- ORS request helper ---------- */
@@ -118,7 +158,7 @@ STN.routing = {
       }
     };
     if (opts.avoidPolygons) body.options.avoid_polygons = opts.avoidPolygons;
-    if (opts.alternativeRoutes) body.alternative_routes = opts.alternativeRoutes;
+    if (opts.avoidFeatures) body.options.avoid_features = opts.avoidFeatures;
     if (opts.preference) body.preference = opts.preference;
 
     var r = await fetch("https://api.openrouteservice.org/v2/directions/driving-hgv/geojson", {
@@ -132,26 +172,8 @@ STN.routing = {
     return geo;
   },
 
-  /* ---------- SHORT routes: native alternatives + per-alternative avoid loop ---------- */
-  _buildShortOptions: async function (startLL, destLL) {
-    var alt;
-    try {
-      alt = await this._fetchRoute([startLL, destLL], {
-        alternativeRoutes: { target_count: 3, share_factor: 0.6, weight_factor: 1.4 }
-      });
-    } catch (e) {
-      alt = await this._fetchRoute([startLL, destLL]);
-    }
-    var options = [];
-    for (var i = 0; i < alt.features.length; i++) {
-      var opt = await this._shortRouteLoop(alt.features[i], startLL, destLL);
-      opt.label = alt.features.length > 1 ? "Route " + (i + 1) : "Route";
-      options.push(opt);
-    }
-    return options;
-  },
-
-  _shortRouteLoop: async function (initialFeature, startLL, destLL) {
+  /* ---------- SHORT routes: reactive whole-route avoid loop ---------- */
+  _shortRouteLoop: async function (initialFeature, startLL, destLL, extra) {
     var avoid = [], seen = {}, feature = initialFeature, attempt = 0;
     while (true) {
       var latlngs = feature.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
@@ -165,9 +187,8 @@ STN.routing = {
       });
       attempt++;
       try {
-        var geo = await this._fetchRoute([startLL, destLL], {
-          avoidPolygons: { type: "MultiPolygon", coordinates: avoid }
-        });
+        var opts = Object.assign({}, extra, { avoidPolygons: { type: "MultiPolygon", coordinates: avoid } });
+        var geo = await this._fetchRoute([startLL, destLL], opts);
         feature = geo.features[0];
       } catch (e) {
         var ll = feature.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
@@ -177,26 +198,12 @@ STN.routing = {
     }
   },
 
-  /* ---------- LONG routes: Fastest + Shortest, each patched locally ---------- */
-  _buildLongOptions: async function (startLL, destLL, baselineFastest) {
-    var options = [];
-    var fastest = await this._patchLowBridges(baselineFastest.features[0]);
-    fastest.label = "Fastest";
-    options.push(fastest);
-
-    try {
-      var baselineShort = await this._fetchRoute([startLL, destLL], { preference: "shortest" });
-      var shortest = await this._patchLowBridges(baselineShort.features[0]);
-      shortest.label = "Shortest";
-      options.push(shortest);
-    } catch (e) { /* one good option beats none */ }
-
-    return options;
-  },
-
   /* Cut a small detour window around each on-route low bridge (or cluster of
-     them) and splice it in — sidesteps ORS's whole-route avoid_polygons cap. */
-  _patchLowBridges: async function (baselineFeature) {
+     them) and splice it in — sidesteps ORS's whole-route avoid_polygons cap.
+     `extra` (this weighting's preference/avoidFeatures) rides along on every
+     detour request too, so e.g. an Avoid Tolls option doesn't sneak back onto
+     a toll road just to dodge a bridge. */
+  _patchLowBridges: async function (baselineFeature, extra) {
     var origCoords = baselineFeature.geometry.coordinates; // [lon,lat]
     var latlngs = origCoords.map(function (c) { return [c[1], c[0]]; });
     var cum = STN.hazards.cumulativeDistancesM(latlngs);
@@ -223,9 +230,9 @@ STN.routing = {
     for (var c = 0; c < clusters.length; c++) {
       var cluster = clusters[c];
       if (cluster.maxIdx <= lastExitIdx) continue; // already inside a previous detour's window
-      var result = await this._resolveCluster(cluster, origCoords, cum, lastExitIdx, this.WINDOW_M);
+      var result = await this._resolveCluster(cluster, origCoords, cum, lastExitIdx, this.WINDOW_M, extra);
       if (!result.resolved) {
-        result = await this._resolveCluster(cluster, origCoords, cum, lastExitIdx, this.WINDOW_BIG_M);
+        result = await this._resolveCluster(cluster, origCoords, cum, lastExitIdx, this.WINDOW_BIG_M, extra);
       }
       lastExitIdx = result.exitIdx;
       if (result.resolved) {
@@ -263,7 +270,7 @@ STN.routing = {
      Returns {resolved:false, entryIdx, exitIdx} if it still can't be avoided —
      entryIdx/exitIdx are still reported so the caller can fence off this zone
      from the next cluster's window. */
-  _resolveCluster: async function (cluster, origCoords, cum, lastExitIdx, windowM) {
+  _resolveCluster: async function (cluster, origCoords, cum, lastExitIdx, windowM, extra) {
     var entryIdx = cluster.minIdx;
     while (entryIdx > 0 && (cum[cluster.minIdx] - cum[entryIdx]) < windowM) entryIdx--;
     if (entryIdx <= lastExitIdx) entryIdx = Math.min(cluster.minIdx - 1, lastExitIdx + 1);
@@ -274,10 +281,8 @@ STN.routing = {
 
     var avoidBoxes = cluster.hits.map(function (h) { return STN.routing._boxAround(h.b); });
     try {
-      var geo = await STN.routing._fetchRoute(
-        [origCoords[entryIdx], origCoords[exitIdx]],
-        { avoidPolygons: { type: "MultiPolygon", coordinates: avoidBoxes } }
-      );
+      var opts = Object.assign({}, extra, { avoidPolygons: { type: "MultiPolygon", coordinates: avoidBoxes } });
+      var geo = await STN.routing._fetchRoute([origCoords[entryIdx], origCoords[exitIdx]], opts);
       var subLatLngs = geo.features[0].geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
       if (STN.hazards.nearRoute(subLatLngs, STN.routing.ON_ROUTE_M).length) {
         return { resolved: false, entryIdx: entryIdx, exitIdx: exitIdx };
@@ -319,7 +324,7 @@ STN.routing = {
     ]];
   },
 
-  /* ---------- 3. show 1-3 options, then draw whichever is picked ---------- */
+  /* ---------- 3. show up to 4 options, then draw whichever is picked ---------- */
   _showOptions: function (options) {
     if (options.length <= 1) { this.draw(options[0]); return; }
     var box = STN.el("routeOptions");
