@@ -60,9 +60,10 @@ STN.hazards = {
     this.layer = group.addTo(STN.map);
   },
 
-  /* After a route is drawn: which bridges lower than the truck sit within
-     ~100 m of the route line? Returns them sorted lowest-first. */
-  nearRoute: function (routeLatLngs) {
+  /* Which bridges lower than the truck sit within radiusM of the route line?
+     Returns them sorted lowest-first. */
+  nearRoute: function (routeLatLngs, radiusM) {
+    radiusM = radiusM || 100;
     var truckH = STN.truckHeightFt();
     var dangerous = this.all.filter(function (b) { return b.h <= truckH + 0.24; });
     if (!dangerous.length || routeLatLngs.length < 2) return [];
@@ -78,7 +79,7 @@ STN.hazards = {
     var hits = [];
     dangerous.forEach(function (b) {
       if (b.lat < minLat || b.lat > maxLat || b.lon < minLon || b.lon > maxLon) return;
-      if (STN.hazards._distToLineM(b, routeLatLngs) <= 100) hits.push(b);
+      if (STN.hazards._distToLineM(b, routeLatLngs) <= radiusM) hits.push(b);
     });
     hits.sort(function (a, c) { return a.h - c.h; });
     return hits;

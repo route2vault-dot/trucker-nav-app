@@ -84,6 +84,7 @@ button.primary.big { width: 100%; margin-top: 14px; }
   font-size: 19px; font-weight: 800; line-height: 1.35;
   border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.5);
 }
+#hazardBanner.caution { background: #b45309; }
 
 /* ---------- status / error toast ---------- */
 #statusMsg {

@@ -14,7 +14,8 @@ What it does:
 - [x] Full-screen map of the corridor (Leaflet + OpenStreetMap tiles) *(built 2026-07-06)*
 - [x] "Where to?" search box → address lookup (Nominatim, free, no key)
 - [x] Truck-safe route via OpenRouteService truck profile with rig dimensions in settings *(code done — awaiting user's free ORS key for a live test)*
-- [x] Low-clearance bridges as warning pins — 5,334 points downloaded from OSM for all 5 states (1,142 under 13'6"); red = won't fit, orange = tight; route is auto-checked and a red banner lists bridges within ~100 m of it
+- [x] Low-clearance bridges as warning pins — 5,334 points downloaded from OSM for all 5 states (1,142 under 13'6"); red = won't fit, orange = tight
+- [x] **Active low-bridge avoidance** *(added 2026-07-06)*: every route is checked against our bridge database; too-low bridges ON the route get wrapped in ORS `avoid_polygons` boxes and the route is re-requested (up to 4 rounds). Red banner only if no way around exists; amber caution if low bridges are merely nearby. Live-verified: baseline ORS route passed 11 m from a 6'8" Dallas underpass ORS's own data missed; the loop rerouted clean in 2 iterations.
 - [x] Blue dot: driver's live GPS position
 - [x] Big-button, high-contrast UI with day/night toggle
 - [x] "Add to Home Screen" instructions *(standard browser feature — see README)*
